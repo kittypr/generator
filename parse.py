@@ -24,6 +24,7 @@ class JsonDocParser:
 
     def write_data(self):
         self.gdoc.write(self.data)
+        self.new_data()
 
     # ***** PARSING METHODS *****
 
