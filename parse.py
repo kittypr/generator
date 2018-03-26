@@ -1,7 +1,5 @@
-import argparse
 import json
 from subprocess import Popen, PIPE
-import creator
 
 class JsonDocParser:
 
@@ -101,10 +99,3 @@ def main(filename, gdoc):
         doc_parser.list_parse(document_json[1])
     else:
         print('Incompatible Pandoc version')
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generator of Google Documents')
-    parser.add_argument('input', help='Input file. Use Pandoc`s input formats', action='store')
-    args = parser.parse_args()
-    main(args.input)
