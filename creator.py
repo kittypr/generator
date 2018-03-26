@@ -16,6 +16,15 @@ CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Apps Script API Python. Google docs generator'
 
 
+class GDoc:
+    def __init__(self, writer, id):
+        self.writer = writer
+        self.id = id
+
+    def write(self, string):
+        self.writer.append_paragraph(self.id, string)
+
+
 class GDocsWriter:
     def __init__(self):
         credentials = self.get_credentials()
@@ -52,11 +61,11 @@ class GDocsWriter:
             request = {'function': 'createDocument', 'parameters': [document_name]}
             response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()
             doc_id = response['response']['result']
-            return doc_id
+            return GDoc(self, doc_id)
         except errors.HttpError as e:
             print(e.content)
 
-    def create_document_with_paragraph(self, doc_id, string_to_write):
+    def append_paragraph(self, doc_id, string_to_write):
         try:
             request = {'function': 'appendParagraphToDocumentById', 'parameters': [doc_id, string_to_write]}
             response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()

@@ -1,11 +1,12 @@
 import argparse
 import json
 from subprocess import Popen, PIPE
-import creater
+import creator
 
 class JsonDocParser:
 
-    def __init__(self):
+    def __init__(self, gdoc):
+        self.gdoc = gdoc
         self.immediate_writing = True
         self.data = ''
         self.fmt ={'Emph': 0, 'Strong': 0, 'Strikeout': 0}
@@ -24,7 +25,7 @@ class JsonDocParser:
     # ***** WRITING METHODS *****
 
     def write_data(self):
-        pass
+        self.gdoc.write(self.data)
 
     # ***** PARSING METHODS *****
 
@@ -91,9 +92,9 @@ def get_json(filename):
         return document_json
 
 
-def main(filename):
+def main(filename, gdoc):
     document_json = get_json(filename)
-    doc_parser = JsonDocParser()
+    doc_parser = JsonDocParser(gdoc)
     if type(document_json) == dict:
         doc_parser.list_parse(document_json['blocks'])
     elif type(document_json) == list:
