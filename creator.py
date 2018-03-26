@@ -47,16 +47,18 @@ class GDocsWriter:
             print('Storing credentials to ' + credential_path)
         return credentials
 
-    def create_new_document(self):
-        return None
-
-    def create_document_with_paragraph(self, string_to_write):
+    def create_new_document(self, document_name):
         try:
-            request = {'function': 'createDocument'}
+            request = {'function': 'createDocument', 'parameters': [document_name]}
             response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()
-            docId = response['response']['result']
-            print(response)
-            request = {'function': 'appendParagraphToDocumentById', 'parameters': [docId, string_to_write]}
+            doc_id = response['response']['result']
+            return doc_id
+        except errors.HttpError as e:
+            print(e.content)
+
+    def create_document_with_paragraph(self, doc_id, string_to_write):
+        try:
+            request = {'function': 'appendParagraphToDocumentById', 'parameters': [doc_id, string_to_write]}
             response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()
             print(response)
         except errors.HttpError as e:
