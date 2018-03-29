@@ -100,3 +100,4 @@ def main(filename, gdoc):
         doc_parser.list_parse(document_json[1])
     else:
         print('Incompatible Pandoc version')
+    gdoc.flush()  # TODO JULIA LOOK HERE

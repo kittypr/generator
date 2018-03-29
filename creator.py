@@ -15,6 +15,8 @@ SCOPES = ['https://www.googleapis.com/auth/script.projects', 'https://www.google
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Apps Script API Python. Google docs generator'
 
+SCRIPT_ID = '1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa'
+
 
 class GDoc:
     def __init__(self, writer, id):
@@ -24,12 +26,72 @@ class GDoc:
     def write(self, string):
         self.writer.append_paragraph(self.id, string)
 
+    def flush(self):
+        self.writer.execute_batch()
 
-class GDocsWriter:
-    def __init__(self, flags):
+
+def request_callback(id, response, exception):
+    print(response)
+
+
+class GDocsWriter:  # TODO proper exception handling
+    def __init__(self, flags, batch_capacity=100):
         credentials = self.get_credentials(flags)
         http = credentials.authorize(httplib2.Http())
         self.app_script_service = discovery.build('script', 'v1', http=http)
+        self.batch = None
+        self.batch_capacity = batch_capacity
+        self.batch_size = 0
+
+    def create_new_document(self, document_name):
+        try:
+            request = {'function': 'createDocument', 'parameters': [document_name]}
+            response = self.app_script_service.scripts().run(scriptId=SCRIPT_ID, body=request).execute()
+            doc_id = response['response']['result']
+            return GDoc(self, doc_id)
+        except errors.HttpError as e:
+            print(e.content)
+
+    def append_paragraph(self, doc_id, string_to_write):
+        if self.batch is None:
+            self.batch = self.app_script_service.new_batch_http_request(callback=request_callback)
+        request = {'function': 'appendParagraphToDocumentById', 'parameters': [doc_id, string_to_write]}
+        self.batch.add(self.app_script_service.scripts().run(scriptId=SCRIPT_ID, body=request))
+        self.batch_size += 1
+        if self.batch_size == self.batch_capacity:
+            try:
+                self.batch.execute()
+                print('batch request executed on append_paragraph')
+                self.batch_size = 0
+                self.batch = None
+            except errors.HttpError as e:
+                print(e.content)
+
+    def append_heading_paragraph(self, doc_id, string_to_write, heading_level):
+        if self.batch is None:
+            self.batch = self.app_script_service.new_batch_http_request(callback=request_callback)
+        request = {'function': 'appendHeadingParagraphById', 'parameters': [doc_id, string_to_write, heading_level]}
+        self.batch.add(self.app_script_service.scripts().run(scriptId=SCRIPT_ID, body=request))
+        self.batch_size += 1
+        if self.batch_size == self.batch_capacity:
+            try:
+                self.batch.execute()
+                print('batch request executed on append_heading_paragraph')
+                self.batch_size = 0
+                self.batch = None
+            except errors.HttpError as e:
+                print(e.content)
+
+    def execute_batch(self):
+        if self.batch is None:
+            return
+        try:
+            self.batch.execute()
+            print('batch request executed on execute_batch')
+            self.batch_size = 0
+            self.batch = None
+        except errors.HttpError as e:
+            print(e.content)
 
     def get_credentials(self, flags):
         """Gets valid user credentials from storage.
@@ -54,20 +116,3 @@ class GDocsWriter:
             credentials = tools.run_flow(flow, store, flags)
             print('Storing credentials to ' + credential_path)
         return credentials
-
-    def create_new_document(self, document_name):
-        try:
-            request = {'function': 'createDocument', 'parameters': [document_name]}
-            response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()
-            doc_id = response['response']['result']
-            return GDoc(self, doc_id)
-        except errors.HttpError as e:
-            print(e.content)
-
-    def append_paragraph(self, doc_id, string_to_write):
-        try:
-            request = {'function': 'appendParagraphToDocumentById', 'parameters': [doc_id, string_to_write]}
-            response = self.app_script_service.scripts().run(scriptId='1MArmq6LjsPkAjQ5krm1vCWuMslLrw9kLZyWvlCRoUP_QyOPOVFiTgqoa', body=request).execute()
-            print(response)
-        except errors.HttpError as e:
-            print(e.content)

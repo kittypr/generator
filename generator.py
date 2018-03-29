@@ -14,7 +14,7 @@ args = parser.parse_args()
 
 def main():
     print(args.input)
-    writer = creator.GDocsWriter(args)
+    writer = creator.GDocsWriter(args, 3)
     doc = writer.create_new_document('Test_Report')
     parse.main(args.input, doc)
 
