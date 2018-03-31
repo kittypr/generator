@@ -14,11 +14,10 @@ args = parser.parse_args()
 
 def main():
     print(args.input)
-    writer = creator.GDocsWriter(args, 3)
+    writer = creator.GDocsWriter(args)
     doc = writer.create_new_document('Test_Report')
     parse.main(args.input, doc)
-    doc.flush()
-
+    # doc.write_table([['asd', 'wds'], ['bsd', 'lds']])
 
 if __name__ == '__main__':
     main()
