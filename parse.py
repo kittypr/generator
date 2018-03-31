@@ -34,6 +34,32 @@ class JsonDocParser:
             self.gdoc.write_para(self.data)
         self.new_data()
 
+    def write_table(self, input_table):
+        if self.immediate_writing and self.data:
+            self.write_data()
+        previous_state = self.immediate_writing
+        self.immediate_writing = False
+        table = list()
+        headers = input_table['c'][3]
+        if headers:
+            header_row = list()
+            for column in headers:
+                self.list_parse(column)
+                cell = self.data
+                self.new_data()
+                header_row.append(cell)
+            table.append(header_row)
+        table_rows = input_table['c'][4]
+        for table_row in table_rows:
+            row = list()
+            for column in table_row:
+                self.list_parse(column)
+                cell = self.data
+                self.new_data()
+                row.append(cell)
+            table.append(row)
+        self.immediate_writing = previous_state
+        self.gdoc.write_table(table)
     # ***** PARSING METHODS *****
 
     def write_special_block(self, block):
@@ -51,13 +77,12 @@ class JsonDocParser:
             self.write_data()
         self.current_header_level = 0
 
-
     def dict_parse(self, dictionary):
         try:
             if dictionary['t'] in self.fmt.keys():
                 self.fmt[dictionary['t']] = 1
             if dictionary['t'] == 'Table':
-                pass
+                self.write_table(dictionary)
             elif dictionary['t'] == 'CodeBlock' or dictionary['t'] == 'Code':
                 pass
             elif dictionary['t'] == 'Div' or dictionary['t'] == 'Span' or dictionary['t'] == 'Header':
@@ -102,13 +127,13 @@ class JsonDocParser:
 
 
 def get_json(filename):
-    command = 'pandoc -f markdown -t json ' + filename
+    command = 'pandoc -f markdown -t json ' + '"' + filename + '"'
     print(command)
     proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
     res = proc.communicate()
 
     if res[1]:
-        print(str(res[1].decode('cp866')))  # sending stderr output to user
+        print('ERROR', str(res[1].decode('cp866')))  # sending stderr output to user
         return None
     else:
         document_json = json.loads(res[0])

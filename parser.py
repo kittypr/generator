@@ -387,8 +387,7 @@ def write_table(tab):
     if string_to_write:  # writing all text from buffer, table has it's own rules for rows, cols and their shift-rules
         write_text()
 
-    row = TableRow()  # adding empty line before table
-    table.addElement(row)
+
 
     row = TableRow()
     headers = tab['c'][3]
