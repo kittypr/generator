@@ -1,13 +1,18 @@
 import json
 from subprocess import Popen, PIPE
 
+
 class JsonDocParser:
 
     def __init__(self, gdoc):
         self.gdoc = gdoc
         self.immediate_writing = True
         self.data = ''
-        self.fmt ={'Emph': 0, 'Strong': 0, 'Strikeout': 0}
+        self.fmt = {'Emph': 0, 'Strong': 0, 'Strikeout': 0}
+
+        # ****** INDICATORS ******
+
+        self.current_header_level = 0
 
     # ***** INDICATOR`s METHODS *****
 
@@ -23,10 +28,29 @@ class JsonDocParser:
     # ***** WRITING METHODS *****
 
     def write_data(self):
-        self.gdoc.write(self.data)
+        if self.current_header_level != 0:
+            self.gdoc.write_heading(self.data, self.current_header_level)
+        else:
+            self.gdoc.write_para(self.data)
         self.new_data()
 
     # ***** PARSING METHODS *****
+
+    def write_special_block(self, block):
+        if self.immediate_writing and self.data:
+            self.write_data()
+        con = 1  # we chose in what part of block content is
+        if block['t'] == 'Header':
+            self.current_header_level = block['c'][0]
+            con = 2
+        previos_state = self.immediate_writing
+        self.immediate_writing = False
+        self.list_parse(block['c'][con])
+        self.immediate_writing = previos_state
+        if self.immediate_writing:
+            self.write_data()
+        self.current_header_level = 0
+
 
     def dict_parse(self, dictionary):
         try:
@@ -37,7 +61,7 @@ class JsonDocParser:
             elif dictionary['t'] == 'CodeBlock' or dictionary['t'] == 'Code':
                 pass
             elif dictionary['t'] == 'Div' or dictionary['t'] == 'Span' or dictionary['t'] == 'Header':
-                pass
+                self.write_special_block(dictionary)
             elif dictionary['t'] == 'Math':
                 pass
             elif dictionary['t'] == 'Link':
@@ -100,4 +124,3 @@ def main(filename, gdoc):
         doc_parser.list_parse(document_json[1])
     else:
         print('Incompatible Pandoc version')
-    gdoc.flush()  # TODO JULIA LOOK HERE

@@ -17,6 +17,7 @@ def main():
     writer = creator.GDocsWriter(args, 3)
     doc = writer.create_new_document('Test_Report')
     parse.main(args.input, doc)
+    doc.flush()
 
 
 if __name__ == '__main__':

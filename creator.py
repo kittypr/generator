@@ -23,8 +23,11 @@ class GDoc:
         self.writer = writer
         self.id = id
 
-    def write(self, string):
+    def write_para(self, string):
         self.writer.append_paragraph(self.id, string)
+
+    def write_heading(self, string, level):
+        self.writer.append_heading_paragraph(self.id, string, level)
 
     def flush(self):
         self.writer.execute_batch()
