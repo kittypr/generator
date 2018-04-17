@@ -3,16 +3,19 @@ from docx import Document
 
 class DocxWriter:
     def __init__(self):
-        self.document = Document('test_1.docx')
+        self.document = Document('style.docx')
 
     def add_paragraph(self, text):
-        self.document.add_paragraph(text)
+        p = self.document.add_paragraph(text)
+        p.style = 'Normal'
 
     def add_heading(self, text, level):
-        self.document.add_heading(text, level)
+        h = self.document.add_heading(text, level)
+        h.style = 'Heading ' + str(level)
 
     def add_table(self, table):
         new_table = self.document.add_table(rows=len(table), cols=len(table[0]))
+        new_table.style = 'Table'
         for i in range(0, len(table)):
             for j in range(0, len(table[0])):
                 new_table.rows[i].cells[j].text = table[i][j]
