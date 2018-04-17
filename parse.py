@@ -8,11 +8,12 @@ class JsonDocParser:
         self.doc = doc
         self.immediate_writing = True
         self.data = ''
-        self.fmt = {'Emph': 0, 'Strong': 0, 'Strikeout': 0}
 
         # ****** INDICATORS ******
 
         self.current_header_level = 0
+        self.is_bullet = False
+        self.fmt = {'Emph': 0, 'Strong': 0, 'Strikeout': 0}
 
     # ***** INDICATOR`s METHODS *****
 
@@ -28,7 +29,9 @@ class JsonDocParser:
     # ***** WRITING METHODS *****
 
     def write_data(self):
-        if self.current_header_level != 0:
+        if self.is_bullet:
+            self.doc.write_bullet_element(self.data)
+        elif self.current_header_level != 0:
             self.doc.add_heading(self.data, self.current_header_level)
         else:
             self.doc.add_paragraph(self.data)
@@ -38,7 +41,7 @@ class JsonDocParser:
         if self.immediate_writing and self.data:
             self.write_data()
         previous_state = self.immediate_writing
-        self.immediate_writing = False
+        self.collect_data()
         table = list()
         headers = input_table['c'][3]
         if headers:
@@ -60,6 +63,7 @@ class JsonDocParser:
             table.append(row)
         self.immediate_writing = previous_state
         self.doc.add_table(table)
+
     # ***** PARSING METHODS *****
 
     def write_special_block(self, block):
@@ -70,12 +74,17 @@ class JsonDocParser:
             self.current_header_level = block['c'][0]
             con = 2
         previos_state = self.immediate_writing
-        self.immediate_writing = False
+        self.collect_data()
         self.list_parse(block['c'][con])
         self.immediate_writing = previos_state
         if self.immediate_writing:
             self.write_data()
         self.current_header_level = 0
+
+    def write_bullet(self, bull_list):
+        self.is_bullet = True
+        self.list_parse(bull_list['c'])
+        self.is_bullet = False
 
     def dict_parse(self, dictionary):
         try:
@@ -92,7 +101,7 @@ class JsonDocParser:
             elif dictionary['t'] == 'Link':
                 pass
             elif dictionary['t'] == 'BulletList':
-                pass
+                self.write_bullet(dictionary)
             elif dictionary['t'] == 'OrderedList':
                 pass
             elif dictionary['t'] == 'Image':

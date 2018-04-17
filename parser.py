@@ -3,9 +3,16 @@ import argparse
 import json
 import sys
 from subprocess import Popen, PIPE
-import creater
 
 
+from odf.draw import Image, Frame
+from odf.opendocument import OpenDocumentSpreadsheet
+from odf.style import Style, TableColumnProperties, TableRowProperties, TextProperties
+from odf.table import Table, TableRow, TableCell, TableColumn
+from odf.text import P, A
+
+from pandocodswriter.limages import load_images
+from pandocodswriter.lstyle import load_style, add_fmt, st_dict
 # usage - python odswriter.py yourInputFile.yourExetention yourOutputFile.ods -s *YOUR POSITIVE NUMBER*
 # check README.md for more information.
 # DO NOT mix up places of intput and output.
@@ -21,15 +28,15 @@ simple_text = 'text'
 
 
 # Read the command-line arguments.
-# parser = argparse.ArgumentParser(description='Pandoc ODS writer. This is Pandoc filter, but there is no opportunity '
-#                                              'write .ods files easier way. So, use "out.ods" '
-#                                              'option to write .ods files with this filter')
-# parser.add_argument('input', help='Input file. Use Pandoc`s input formats.', action='store')
-# parser.add_argument('output', help='Output file. Use .ods filename extension.', action='store')
-# parser.add_argument('-s', '--separator', nargs=1, help='Header level to separate sheets, 0 by default(no separation).',
-#                      action='store')
-# parser.add_argument('-r', '--reference', nargs=1, help='Reference to file with styles', action='store')
-# args = parser.parse_args()
+parser = argparse.ArgumentParser(description='Pandoc ODS writer. This is Pandoc filter, but there is no opportunity '
+                                             'write .ods files easier way. So, use "out.ods" '
+                                             'option to write .ods files with this filter')
+parser.add_argument('input', help='Input file. Use Pandoc`s input formats.', action='store')
+parser.add_argument('output', help='Output file. Use .ods filename extension.', action='store')
+parser.add_argument('-s', '--separator', nargs=1, help='Header level to separate sheets, 0 by default(no separation).',
+                    action='store')
+parser.add_argument('-r', '--reference', nargs=1, help='Reference to file with styles', action='store')
+args = parser.parse_args()
 
 # It is important for auto-height in text-rows:
 # if you want to change width by default (10 cm), change it in 'write_sheet()',
@@ -41,6 +48,10 @@ ININTENCM = 3.9
 # I need this global variables, because there are two recursive functions call each other, so it would be very hard work
 # without global "string_to_write". Other ones are just make those functions much more easy to read.
 
+ods = OpenDocumentSpreadsheet()
+table = Table()  # creating the first sheet
+
+content = P()
 string_to_write = ''
 header_level = 0
 bullet = 0  # indicating bullet lists
@@ -66,13 +77,10 @@ def write_sheet():
 
 def count_height(row, cell):
     """Counting height that shows all text in cell.
-
     This functions uses width of text-column and font size.
-
     Args:
         row - current row.
         cell - current cell.
-
     """
     style_name = cell.getAttribute('stylename')
     try:
@@ -104,11 +112,9 @@ def count_height(row, cell):
 
 def count_size(wh_list, row):
     """Count height of image row.
-
     Args:
         wh_list - list with attributes, contains width and height:
         row - image row.
-
     """
     height, width = -1, -1
     for l in wh_list:
@@ -140,13 +146,10 @@ def count_size(wh_list, row):
 
 def add_style(cell, name):
     """Add style to cell element.
-
     This function calls style loading from 'lstyle' and saves it, in order to use it again quickly.
-
     Args:
         cell - cell that needs to be styled.
         name - style name that will be set.
-
     """
     if args.reference:
         styles_source = args.reference[0]
@@ -168,11 +171,9 @@ def add_style(cell, name):
 
 def write_text():
     """Write to output file ordinary elements.
-
     This function is called every tame, we collect whole paragraph or block of elements in 'string_to_write'
     We write every block or paragraph in it's own cell in the first column of output file.
     After writing we shift down current row and clean 'string_to_write' in order to collect next elements.
-
     """
     global string_to_write
     global header_level
@@ -181,13 +182,35 @@ def write_text():
     global table
     global separator
     global content
-    creater.create_document_with_paragraph(string_to_write)
+    row = TableRow()
+    cell = TableCell()
+    if header_level != 0 and header_level > 0:
+        if header_level > (len(header) - 1):  # if there are headers with lvl bigger than 2
+            for i in range(len(header), header_level+1):  # creating names for headers with lvl bigger than 2
+                header.append('header' + str(i))
+        add_style(cell, header[header_level])
+        if header_level == separator:  # if separator was set, we will create new sheet in document
+            if table.hasChildNodes():
+                write_sheet()
+            table = Table(name=string_to_write)  # creating new sheet with separating header as name
+    else:
+        add_style(cell, simple_text)
+    if bullet:
+        string_to_write = '- ' + string_to_write
+    if ordered > 0:
+        string_to_write = str(ordered) + ') ' + string_to_write
+        ordered = ordered + 1
+    content.addText(string_to_write)
+    cell.addElement(content)
+    content = P()
+    count_height(row, cell)
+    row.addElement(cell)
+    table.addElement(row)
     string_to_write = ''
 
 
 def write_image(image):
     """Write to output file image elements.
-
     Since, element with title 'Image' has special structure of 'c'(Content) field, that looks like:
     [[0], [1], [2]]
     where:
@@ -196,10 +219,8 @@ def write_image(image):
         [1] - caption.
         [2] - ['src', 'title'] - source and title of image.
     we should parse it especially.
-
     Args:
         image - element with title 'Image'.
-
     """
     global image_counter
     global saved_hr
@@ -242,17 +263,14 @@ def write_ord(ord_list, without_write):
 
 def write_code(code):
     """Write to output file code elements.
-
     Since, element with title 'Code' or 'CodeBlock' has special structure of 'c'(Content) field, that looks like:
     [[0], 'code']
     where:
         [0] - list of attributes: identifier, classes, key-value pairs.
         'code' - string with code.
     we should parse it especially.
-
     Args:
         code - element with title 'Code' or 'CodeBlock'.
-
     """
     global string_to_write
     string_to_write = string_to_write + code['c'][1]
@@ -260,7 +278,6 @@ def write_code(code):
 
 def write_link(link):
     """Write special blocks with attributes.
-
     Since, element with title 'Link' has special structure of 'c'(Content) field, that looks like:
     [[atr], [1},['target', 'title']]
         where:
@@ -268,10 +285,8 @@ def write_link(link):
         [1] - list with objects (list of dictionaries) - visible text of hyperlink.
         ['target', 'title'] - list with two strings, 'target' - URL, 'title' - title.
     we should parse it especially.
-
     Args:
         link - element with title 'Link'.
-
     """
     global string_to_write
     global content
@@ -285,7 +300,6 @@ def write_link(link):
 
 def write_math(math):
     """Write to output file code elements
-
     Since, element with title 'Math' has special structure of 'c'(Content) field, that looks like:
     [{0}, 'math'].
     where:
@@ -293,10 +307,8 @@ def write_math(math):
         'math' - string with math.
     we should parse it especially.
     TeX Math format.
-
     Args:
         raw - element with title 'Math'.
-
     """
     # TODO: write it
     global string_to_write
@@ -305,17 +317,14 @@ def write_math(math):
 
 def write_raw(raw):
     """Write to output file raw elements.
-
     Since, element with title 'RawBlock' or 'RawInline' has special structure of 'c'(Content) field, that looks like:
     [format, 'raw text']
     where:
         format - format of raw text.
         'raw text' - string with raw text.
     we should parse it especially.
-
     Args:
         raw - element with title 'RawBlock' or 'RawInline'.
-
     """
     global string_to_write
     string_to_write = string_to_write + raw['c'][1]
@@ -323,22 +332,17 @@ def write_raw(raw):
 
 def write_special_block(block, without_write):
     """Write special blocks with attributes.
-
     Since, element with title  'Div' or 'Span' or 'Header' has special structure of 'c'(Content) field, that looks like:
     [[0], [1]]*
     where:
     [0] - list of attributes: identifier, classes, key-value pairs.
     [1] - list with objects (list of dictionaries) - content.
-
     * with 'Header' title - [level, [0], [1]] - level - int, [0], [1] - the same as above.
-
     we should parse it especially.
     This function writes block itself.
-
     Args:
         block - element with title 'Div' or 'Span' or 'Header'.
         without_write - indicate calling write_text() functions. By default calls it.
-
     """
     global string_to_write
     global header_level
@@ -356,11 +360,9 @@ def write_special_block(block, without_write):
 
 def write_table(tab):
     """Write to output file table elements.
-
     This function is called every time, we meet 'Table' dictionary's title.
     Firstly, if we have some information in 'string_to_write' we record it, because we'll use this
     variable to collect information from table's cells.
-
     Table in pandoc's json has following structure:
     dict: { 't': 'Table'
             'c': [ [0] [1] [2] [3] [4] ]
@@ -372,10 +374,8 @@ def write_table(tab):
     [3] - is list of table's headers (top cell of every column), can be empty.
     [4] - list of rows, and row is list of cells.
     Since every cell's structure is the same as text's one, we just parse them as list and write one by one.
-
     Args:
         tab - dictionary with 't': 'Table".
-
     """
     global table
     global string_to_write
@@ -387,7 +387,8 @@ def write_table(tab):
     if string_to_write:  # writing all text from buffer, table has it's own rules for rows, cols and their shift-rules
         write_text()
 
-
+    row = TableRow()  # adding empty line before table
+    table.addElement(row)
 
     row = TableRow()
     headers = tab['c'][3]
@@ -450,20 +451,35 @@ def write_table(tab):
 
 def dict_parse(dictionary, without_write=False):
     """Parse dictionaries.
-
     Dictionary represent some json-object. Kind of json object depends on 't' (title) field of it.
     We will parse it differently  depending on different titles. Sometimes this function write block,
     sometimes it leaves writing special functions.
-
     Args:
         dictionary - object with 't' and sometimes 'c' fields.
         without_write - indicate calling write_text() functions. By default calls it.
-
     """
     global string_to_write
     global fmt
     try:
-        if 'c' in dictionary:
+        if dictionary['t'] in fmt.keys():
+            fmt[dictionary['t']] = 1
+        if dictionary['t'] == 'Table':
+            write_table(dictionary)
+        elif dictionary['t'] == 'CodeBlock' or dictionary['t'] == 'Code':
+            write_code(dictionary)
+        elif dictionary['t'] == 'Div' or dictionary['t'] == 'Span' or dictionary['t'] == 'Header':
+            write_special_block(dictionary, without_write)
+        elif dictionary['t'] == 'Math':
+            write_math(dictionary)
+        elif dictionary['t'] == 'Link':
+            write_link(dictionary)
+        elif dictionary['t'] == 'BulletList':
+            write_bullet(dictionary, without_write)
+        elif dictionary['t'] == 'OrderedList':
+            write_ord(dictionary, without_write)
+        elif dictionary['t'] == 'Image':
+            write_image(dictionary)
+        elif 'c' in dictionary:
             if type(dictionary['c']) == str:
                 string_to_write = string_to_write + dictionary['c']
             if type(dictionary['c']) == list:
@@ -489,11 +505,9 @@ def dict_parse(dictionary, without_write=False):
 
 def list_parse(content_list, without_write=False):
     """Parse list.
-
     Args:
         content_list - list with different parts of content from input-document.
         without_write - indicate calling write_text() functions. By default calls it.
-
     """
     for item in content_list:
         if type(item) == dict:
@@ -506,9 +520,7 @@ def list_parse(content_list, without_write=False):
 
 def main(doc):
     """Main function.
-
     Get JSON object from pandoc, parse it, save result.
-
     Args:
         doc - json object as python dictionary or list.
               In case of dictionary it has representation like:
@@ -518,12 +530,11 @@ def main(doc):
               in blocks we have all file-content, we will parse doc['blocks'].
               In case of list it has representation like:
               [[info_list], [content_list]], so we will parse doc[1].
-
     Raises:
         PermissionError: when we can't write output file.
-
     """
     global table
+    output = args.output
 
     if type(doc) == dict:
         list_parse(doc['blocks'])
@@ -532,19 +543,37 @@ def main(doc):
     else:
         print('Incompatible Pandoc version')
 
+    write_sheet()
+
+    try:
+        ods.save(output)
+    except PermissionError as err:
+        print("No access to ", output)
+        print(err.strerror)
+
 
 if __name__ == '__main__':
-    # source = args.input
-    source = 'Test_Report.md'
+    source = args.input
+
     # Use subprocess to call pandoc and convert input file into json-object.
 
-    command = 'pandoc -f markdown -t json ' + source
-    print(command)
+    command = 'pandoc ' + source + ' -t json'
     proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE)
     res = proc.communicate()
 
     if res[1]:
-        print(str(res[1].decode('cp866')))  # sending stderr output to user
+        print(str(res[1]))  # sending stderr output to user
     else:
-        d = json.loads(res[0])
-        main(d)
+        if args.separator is None:
+            d = json.loads(res[0])
+            main(d)
+        if args.separator is not None:
+            try:
+                s = int(args.separator[0])
+                separator = s
+                d = json.loads(res[0])
+                main(d)
+            except IndexError:
+                print('You entered invalid separator')
+            except ValueError:
+                print('You entered invalid separator')
