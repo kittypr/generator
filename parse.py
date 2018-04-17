@@ -30,7 +30,7 @@ class JsonDocParser:
 
     def write_data(self):
         if self.is_bullet:
-            self.doc.write_bullet_element(self.data)
+            self.doc.add_bullet_element(self.data)
         elif self.current_header_level != 0:
             self.doc.add_heading(self.data, self.current_header_level)
         else:
