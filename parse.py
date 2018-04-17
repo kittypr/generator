@@ -120,8 +120,7 @@ class JsonDocParser:
                     self.add_data('\n\n')
                     if self.immediate_writing:
                         self.write_data()
-            if dictionary['t'] == 'Para':
-                self.add_data('\n')
+            if dictionary['t'] == 'Para' or dictionary['t'] == 'Plain':
                 if self.immediate_writing:
                     self.write_data()
         except KeyError:
