@@ -4,8 +4,8 @@ from subprocess import Popen, PIPE
 
 class JsonDocParser:
 
-    def __init__(self, gdoc):
-        self.gdoc = gdoc
+    def __init__(self, doc):
+        self.doc = doc
         self.immediate_writing = True
         self.data = ''
         self.fmt = {'Emph': 0, 'Strong': 0, 'Strikeout': 0}
@@ -29,9 +29,9 @@ class JsonDocParser:
 
     def write_data(self):
         if self.current_header_level != 0:
-            self.gdoc.write_heading(self.data, self.current_header_level)
+            self.doc.add_heading(self.data, self.current_header_level)
         else:
-            self.gdoc.write_para(self.data)
+            self.doc.add_paragraph(self.data)
         self.new_data()
 
     def write_table(self, input_table):
@@ -59,7 +59,7 @@ class JsonDocParser:
                 row.append(cell)
             table.append(row)
         self.immediate_writing = previous_state
-        self.gdoc.write_table(table)
+        self.doc.add_table(table)
     # ***** PARSING METHODS *****
 
     def write_special_block(self, block):
@@ -140,9 +140,9 @@ def get_json(filename):
         return document_json
 
 
-def main(filename, gdoc):
+def main(filename, doc):
     document_json = get_json(filename)
-    doc_parser = JsonDocParser(gdoc)
+    doc_parser = JsonDocParser(doc)
     if type(document_json) == dict:
         doc_parser.list_parse(document_json['blocks'])
     elif type(document_json) == list:
