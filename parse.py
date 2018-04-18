@@ -12,7 +12,7 @@ class JsonDocParser:
         # ****** INDICATORS ******
 
         self.current_header_level = 0
-        self.is_bullet = False
+        self.bullet_level = 0
         self.fmt = {'Emph': 0, 'Strong': 0, 'Strikeout': 0}
 
     # ***** INDICATOR`s METHODS *****
@@ -29,8 +29,8 @@ class JsonDocParser:
     # ***** WRITING METHODS *****
 
     def write_data(self):
-        if self.is_bullet:
-            self.doc.add_bullet_element(self.data)
+        if self.bullet_level > 0:
+            self.doc.add_bullet_element(self.data, self.bullet_level)
         elif self.current_header_level != 0:
             self.doc.add_heading(self.data, self.current_header_level)
         else:
@@ -82,9 +82,9 @@ class JsonDocParser:
         self.current_header_level = 0
 
     def write_bullet(self, bull_list):
-        self.is_bullet = True
+        self.bullet_level = self.bullet_level + 1
         self.list_parse(bull_list['c'])
-        self.is_bullet = False
+        self.bullet_level = self.bullet_level - 1
 
     def dict_parse(self, dictionary):
         try:
