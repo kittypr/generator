@@ -127,6 +127,7 @@ class JsonDocParser:
                     self.write_data()
         except KeyError as err:
             print('Incompatible Pandoc version. Data could be excepted.')
+            print(err)
 
     def list_parse(self, content_list):
         for item in content_list:

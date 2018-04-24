@@ -1,7 +1,7 @@
 import argparse
 import parse
 import docx_writer
-import os
+import uploader
 from oauth2client import tools
 
 
@@ -12,9 +12,11 @@ args = parser.parse_args()
 
 
 def main():
+    upl = uploader.Uploader(args)
     doc = docx_writer.DocxWriter()
     parse.main(args.input, doc)
     doc.save(args.output + '.docx')
+    upl.upload()
 
 
 if __name__ == '__main__':
