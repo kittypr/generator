@@ -44,7 +44,9 @@ class JsonDocParser:
         self.collect_data()
         table = list()
         headers = input_table['c'][3]
+        is_headers = False
         if headers:
+            is_headers = True
             header_row = list()
             for column in headers:
                 self.list_parse(column)
@@ -62,7 +64,7 @@ class JsonDocParser:
                 row.append(cell)
             table.append(row)
         self.immediate_writing = previous_state
-        self.doc.add_table(table)
+        self.doc.add_table(table, is_headers)
 
     # ***** PARSING METHODS *****
 
@@ -73,10 +75,10 @@ class JsonDocParser:
         if block['t'] == 'Header':
             self.current_header_level = block['c'][0]
             con = 2
-        previos_state = self.immediate_writing
+        previous_state = self.immediate_writing
         self.collect_data()
         self.list_parse(block['c'][con])
-        self.immediate_writing = previos_state
+        self.immediate_writing = previous_state
         if self.immediate_writing:
             self.write_data()
         self.current_header_level = 0
