@@ -20,9 +20,11 @@ class DocxWriter:
             for j in range(0, len(table[0])):
                 new_table.rows[i].cells[j].text = table[i][j]
 
-    def add_bullet_element(self, string):
+    def add_bullet_element(self, string, level):
         p = self.document.add_paragraph()
         p.style = 'List Bullet'
+        if level in range(1, 5):
+            p.style = 'List Bullet ' + str(level)
         p.add_run(string)
 
     def save(self, path):

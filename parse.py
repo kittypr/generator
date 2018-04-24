@@ -125,7 +125,7 @@ class JsonDocParser:
             if dictionary['t'] == 'Para' or dictionary['t'] == 'Plain':
                 if self.immediate_writing:
                     self.write_data()
-        except KeyError:
+        except KeyError as err:
             print('Incompatible Pandoc version. Data could be excepted.')
 
     def list_parse(self, content_list):
