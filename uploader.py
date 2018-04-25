@@ -22,6 +22,7 @@ class Uploader:
         credentials = self.get_credentials(flags)
         http = credentials.authorize(httplib2.Http())
         self.drive_service = discovery.build('drive', 'v3', http=http)
+        self.saved_start_page_token = 5009
 
     def upload(self):
         file_metadata = {'name': 'Test_Report2.docx', 'mimeType': 'application/vnd.google-apps.document'}
@@ -30,6 +31,22 @@ class Uploader:
         file = self.drive_service.files().create(body=file_metadata,
                                             media_body=media,
                                             fields='id').execute()
+
+    def get_revisions(self):
+        # response = self.drive_service.changes().getStartPageToken().execute()
+        page_token = self.saved_start_page_token
+        print(page_token)
+        while page_token is not None:
+            response = self.drive_service.changes().list(pageToken=page_token,
+                                                    spaces='drive').execute()
+            for change in response.get('changes'):
+                # Process change
+                print('Change found for file: %s' % change.get('fileId'))
+                print(change)
+            if 'newStartPageToken' in response:
+                # Last page, save this token for the next polling interval
+                self.saved_start_page_token = response.get('newStartPageToken')
+            page_token = response.get('nextPageToken')
 
     def get_credentials(self, flags):
         """Gets valid user credentials from storage.

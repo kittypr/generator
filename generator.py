@@ -17,6 +17,7 @@ def main():
     parse.main(args.input, doc)
     doc.save(args.output + '.docx')
     upl.upload()
+    upl.get_revisions()
 
 
 if __name__ == '__main__':
